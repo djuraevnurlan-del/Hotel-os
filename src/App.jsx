@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from './supabaseClient';
 
 const initialRooms = [
   {
@@ -35,53 +36,33 @@ export default function App() {
   const [pinError, setPinError] = useState(false);
   const [activeTab, setActiveTab] = useState('grid');
 
-  const [ownerPin, setOwnerPin] = useState(() => localStorage.getItem('hostel_owner_pin') || '2026');
-  const [staffPin, setStaffPin] = useState(() => localStorage.getItem('hostel_staff_pin') || '1111');
+  const [ownerPin, setOwnerPin] = useState('2026');
+  const [staffPin, setStaffPin] = useState('1111');
   const [newOwnerPinInput, setNewOwnerPinInput] = useState('');
   const [newStaffPinInput, setNewStaffPinInput] = useState('');
 
-  const [hotelName, setHotelName] = useState(() => localStorage.getItem('hostel_name') || 'HOSTEL OS PRO');
+  const [hotelName, setHotelName] = useState('HOSTEL OS PRO');
   const [editHotelName, setEditHotelName] = useState(hotelName);
 
-  const [rooms, setRooms] = useState(() => {
-    const saved = localStorage.getItem('hostel_rooms');
-    return saved ? JSON.parse(saved) : initialRooms;
-  });
-
-  const [expenses, setExpenses] = useState(() => {
-    const saved = localStorage.getItem('hostel_expenses');
-    return saved ? JSON.parse(saved) : [{ id: 1, title: 'Закуп воды', amount: 2500 }];
-  });
+  const [rooms, setRooms] = useState(initialRooms);
+  const [expenses, setExpenses] = useState([{ id: 1, title: 'Закуп воды', amount: 2500 }]);
   const [newExpTitle, setNewExpTitle] = useState('');
   const [newExpAmount, setNewExpAmount] = useState('');
 
-  const [staff, setStaff] = useState(() => {
-    const saved = localStorage.getItem('hostel_staff');
-    return saved ? JSON.parse(saved) : [{ id: 1, name: 'Нурлан (Админ)', pay: 1500 }];
-  });
+  const [staff, setStaff] = useState([{ id: 1, name: 'Нурлан (Админ)', pay: 1500 }]);
   const [newStaffName, setNewStaffName] = useState('');
   const [newStaffPay, setNewStaffPay] = useState('');
 
-  const [startShiftCash, setStartShiftCash] = useState(() => parseFloat(localStorage.getItem('hostel_shift_start') || '10000'));
-  
-  const [encashmentLog, setEncashmentLog] = useState(() => {
-    const saved = localStorage.getItem('hostel_encashment_log');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [startShiftCash, setStartShiftCash] = useState(10000);
+  const [encashmentLog, setEncashmentLog] = useState([]);
 
-  const [shiftNotes, setShiftNotes] = useState(() => {
-    const saved = localStorage.getItem('hostel_shift_notes');
-    return saved ? JSON.parse(saved) : [
-      { id: 1, author: 'Нурлан', text: 'Wi-Fi: Hostel_Free_WiFi / hostel2026. Кухня до 23:00.', date: '15.10.2026' }
-    ];
-  });
+  const [shiftNotes, setShiftNotes] = useState([
+    { id: 1, author: 'Нурлан', text: 'Wi-Fi: Hostel_Free_WiFi / hostel2026. Кухня до 23:00.', date: '15.10.2026' }
+  ]);
   const [newNoteText, setNewNoteText] = useState('');
   const [newNoteAuthor, setNewNoteAuthor] = useState('');
 
-  const [cameras, setCameras] = useState(() => {
-    const saved = localStorage.getItem('hostel_cameras');
-    return saved ? JSON.parse(saved) : [{ id: 1, title: 'Камера 1 (Ресепшен)', url: '' }];
-  });
+  const [cameras, setCameras] = useState([{ id: 1, title: 'Камера 1 (Ресепшен)', url: '' }]);
   const [camTitle, setCamTitle] = useState('');
   const [camUrl, setCamUrl] = useState('');
 
@@ -102,18 +83,74 @@ export default function App() {
   const [extraCategory, setExtraCategory] = useState('Штраф');
   const [extraName, setExtraName] = useState('');
   const [extraPrice, setExtraPrice] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');// Загрузка данных из Supabase при старте приложения
+  useEffect(() => {
+    async function fetchDataFromSupabase() {
+      try {
+        const { data, error } = await supabase.from('hotel_data').select('*');
+        if (error) {
+          console.error('Ошибка загрузки из Supabase:', error);
+          return;
+        }
+        if (data && data.length > 0) {
+          data.forEach(row => {
+            if (row.key === 'rooms' && row.value) setRooms(row.value);
+            if (row.key === 'expenses' && row.value) setExpenses(row.value);
+            if (row.key === 'staff' && row.value) setStaff(row.value);
+            if (row.key === 'shiftNotes' && row.value) setShiftNotes(row.value);
+            if (row.key === 'cameras' && row.value) setCameras(row.value);
+            if (row.key === 'hotelName' && row.value) {
+              setHotelName(row.value);
+              setEditHotelName(row.value);
+            }
+            if (row.key === 'startShiftCash' && row.value) setStartShiftCash(Number(row.value));
+            if (row.key === 'encashmentLog' && row.value) setEncashmentLog(row.value);
+            if (row.key === 'ownerPin' && row.value) setOwnerPin(row.value);
+            if (row.key === 'staffPin' && row.value) setStaffPin(row.value);
+          });
+        }
+      } catch (err) {
+        console.error('Сбой подключения к Supabase:', err);
+      }
+    }
+    fetchDataFromSupabase();
+  }, []);
 
-  useEffect(() => { localStorage.setItem('hostel_rooms', JSON.stringify(rooms)); }, [rooms]);
-  useEffect(() => { localStorage.setItem('hostel_expenses', JSON.stringify(expenses)); }, [expenses]);
-  useEffect(() => { localStorage.setItem('hostel_staff', JSON.stringify(staff)); }, [staff]);
-  useEffect(() => { localStorage.setItem('hostel_shift_notes', JSON.stringify(shiftNotes)); }, [shiftNotes]);
-  useEffect(() => { localStorage.setItem('hostel_cameras', JSON.stringify(cameras)); }, [cameras]);
-  useEffect(() => { localStorage.setItem('hostel_name', hotelName); }, [hotelName]);
-  useEffect(() => { localStorage.setItem('hostel_shift_start', startShiftCash.toString()); }, [startShiftCash]);
-  useEffect(() => { localStorage.setItem('hostel_encashment_log', JSON.stringify(encashmentLog)); }, [encashmentLog]);
-  useEffect(() => { localStorage.setItem('hostel_owner_pin', ownerPin); }, [ownerPin]);
-  useEffect(() => { localStorage.setItem('hostel_staff_pin', staffPin); }, [staffPin]);
+  // Универсальная функция для сохранения состояния в Supabase
+  const saveToSupabase = async (key, value) => {
+    try {
+      await supabase
+        .from('hotel_data')
+        .upsert({ key, value }, { onConflict: 'key' });
+    } catch (err) {
+      console.error('Ошибка сохранения в Supabase:', err);
+    }
+  };
+
+  const handleRoomsUpdate = (newRooms) => {
+    setRooms(newRooms);
+    saveToSupabase('rooms', newRooms);
+  };
+
+  const handleExpensesUpdate = (newExp) => {
+    setExpenses(newExp);
+    saveToSupabase('expenses', newExp);
+  };
+
+  const handleStaffUpdate = (newStaff) => {
+    setStaff(newStaff);
+    saveToSupabase('staff', newStaff);
+  };
+
+  const handleNotesUpdate = (newNotes) => {
+    setShiftNotes(newNotes);
+    saveToSupabase('shiftNotes', newNotes);
+  };
+
+  const handleCamerasUpdate = (newCams) => {
+    setCameras(newCams);
+    saveToSupabase('cameras', newCams);
+  };
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -139,7 +176,9 @@ export default function App() {
     setIsAuthenticated(false);
     localStorage.removeItem('hostel_auth');
     localStorage.removeItem('hostel_user_role');
-  };const handleCheckInChange = (newIn) => {
+  };
+
+  const handleCheckInChange = (newIn) => {
     setCheckInDate(newIn);
     if (newIn && checkOutDate) {
       const diff = Math.round((new Date(checkOutDate) - new Date(newIn)) / (1000 * 60 * 60 * 24));
@@ -192,7 +231,7 @@ export default function App() {
   const handleSaveBed = (e) => {
     e.preventDefault();
     const isClearing = bedStatus === 'available' || bedStatus === 'cleaning';
-    setRooms(rooms.map(r => r.id === selectedRoom.id ? {
+    const updatedRooms = rooms.map(r => r.id === selectedRoom.id ? {
       ...r, beds: r.beds.map(b => b.id === selectedBed.id ? {
         ...b,
         guest: isClearing ? '' : guestName,
@@ -206,35 +245,39 @@ export default function App() {
         passportImage: isClearing ? null : passportImage,
         services: isClearing ? [] : b.services
       } : b)
-    } : r));
+    } : r);
+    handleRoomsUpdate(updatedRooms);
     setShowModal(false);
   };
 
   const addExtraService = () => {
     if (!extraName || !extraPrice) return;
-    const updated = [...selectedBed.services, { name: `${extraCategory}: ${extraName}`, price: parseFloat(extraPrice) }];
-    setRooms(rooms.map(r => r.id === selectedRoom.id ? {
-      ...r, beds: r.beds.map(b => b.id === selectedBed.id ? { ...b, services: updated } : b)
-    } : r));
-    setSelectedBed({ ...selectedBed, services: updated });
+    const updatedServices = [...selectedBed.services, { name: `${extraCategory}: ${extraName}`, price: parseFloat(extraPrice) }];
+    const updatedRooms = rooms.map(r => r.id === selectedRoom.id ? {
+      ...r, beds: r.beds.map(b => b.id === selectedBed.id ? { ...b, services: updatedServices } : b)
+    } : r);
+    handleRoomsUpdate(updatedRooms);
+    setSelectedBed({ ...selectedBed, services: updatedServices });
     setExtraName(''); setExtraPrice('');
   };
 
   const removeService = (idx) => {
-    const updated = selectedBed.services.filter((_, i) => i !== idx);
-    setRooms(rooms.map(r => r.id === selectedRoom.id ? {
-      ...r, beds: r.beds.map(b => b.id === selectedBed.id ? { ...b, services: updated } : b)
-    } : r));
-    setSelectedBed({ ...selectedBed, services: updated });
+    const updatedServices = selectedBed.services.filter((_, i) => i !== idx);
+    const updatedRooms = rooms.map(r => r.id === selectedRoom.id ? {
+      ...r, beds: r.beds.map(b => b.id === selectedBed.id ? { ...b, services: updatedServices } : b)
+    } : r);
+    handleRoomsUpdate(updatedRooms);
+    setSelectedBed({ ...selectedBed, services: updatedServices });
   };
 
   const handleCheckOut = () => {
-    setRooms(rooms.map(r => r.id === selectedRoom.id ? {
+    const updatedRooms = rooms.map(r => r.id === selectedRoom.id ? {
       ...r, beds: r.beds.map(b => b.id === selectedBed.id ? {
         ...b, guest: '', phone: '', status: 'cleaning', paymentStatus: 'unpaid',
         paymentMethod: 'Наличные', checkIn: '', checkOut: '', nights: 1, passportImage: null, services: []
       } : b)
-    } : r));
+    } : r);
+    handleRoomsUpdate(updatedRooms);
     setShowModal(false);
   };
 
@@ -251,7 +294,8 @@ export default function App() {
   };
 
   const updateRoomPrice = (roomId, newPrice) => {
-    setRooms(rooms.map(r => r.id === roomId ? { ...r, price: parseFloat(newPrice) || 0 } : r));
+    const updatedRooms = rooms.map(r => r.id === roomId ? { ...r, price: parseFloat(newPrice) || 0 } : r);
+    handleRoomsUpdate(updatedRooms);
   };
 
   let cashIncome = 0, nonCashIncome = 0, occCount = 0, resCount = 0, clnCount = 0;
@@ -286,16 +330,16 @@ export default function App() {
         date: new Date().toLocaleDateString('ru-RU') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         user: userRole === 'owner' ? 'Владелец' : 'Администратор'
       };
-      setEncashmentLog([newEntry, ...encashmentLog]);
+      const updatedLog = [newEntry, ...encashmentLog];
+      setEncashmentLog(updatedLog);
+      saveToSupabase('encashmentLog', updatedLog);
       alert(`Успешно изъято из кассы: ${val} KGS.`);
     }
   };
 
   const handleCloseShift = () => {
     alert(`Смена сдана! Наличность к передаче сменщику: ${currentCashInDrawer} KGS. Не забудьте проверить разменный баланс (${startShiftCash} KGS).`);
-  };
-
-  if (!isAuthenticated) {
+  };if (!isAuthenticated) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#070b14', color: '#fff', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <div style={{ backgroundColor: '#0f172a', padding: '36px', borderRadius: '16px', border: '1px solid #1e293b', width: '380px', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.6)' }}>
@@ -310,7 +354,9 @@ export default function App() {
         </div>
       </div>
     );
-  }return (
+  }
+
+  return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#070b14', color: '#f1f5f9', minHeight: '100vh', fontSize: '13px' }}>
       <header style={{ backgroundColor: '#0f172a', padding: '16px 28px', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -409,13 +455,17 @@ export default function App() {
               })}
             </div>
           </div>
-        )}
-
-        {activeTab === 'finance' && (
+        )}{activeTab === 'finance' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px' }}>
             <div style={{ backgroundColor: '#0f172a', padding: '24px', borderRadius: '14px', border: '1px solid #1e293b' }}>
               <h3 style={{ marginTop: 0, fontSize: '16px', marginBottom: '16px' }}>Учет мелких расходов / Закупок</h3>
-              <form onSubmit={e => { e.preventDefault(); if(!newExpTitle || !newExpAmount) return; setExpenses([...expenses, { id: Date.now(), title: newExpTitle, amount: parseFloat(newExpAmount) }]); setNewExpTitle(''); setNewExpAmount(''); }} style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+              <form onSubmit={e => { 
+                e.preventDefault(); 
+                if(!newExpTitle || !newExpAmount) return; 
+                const updatedExp = [...expenses, { id: Date.now(), title: newExpTitle, amount: parseFloat(newExpAmount) }];
+                handleExpensesUpdate(updatedExp);
+                setNewExpTitle(''); setNewExpAmount(''); 
+              }} style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
                 <input type="text" placeholder="Закуп чего (например, бытовая химия)" value={newExpTitle} onChange={e => setNewExpTitle(e.target.value)} style={{ flex: 2, padding: '10px 14px', backgroundColor: '#070b14', border: '1px solid #1e293b', color: '#fff', borderRadius: '8px' }} />
                 <input type="number" placeholder="Сумма KGS" value={newExpAmount} onChange={e => setNewExpAmount(e.target.value)} style={{ flex: 1, padding: '10px 14px', backgroundColor: '#070b14', border: '1px solid #1e293b', color: '#fff', borderRadius: '8px' }} />
                 <button type="submit" style={{ backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Взять из кассы</button>
@@ -433,7 +483,7 @@ export default function App() {
                     <tr key={ex.id} style={{ borderBottom: '1px solid #1e293b' }}>
                       <td style={{ padding: '12px 14px' }}>{ex.title}</td>
                       <td style={{ padding: '12px 14px', color: '#f87171', fontWeight: '700' }}>-{ex.amount} KGS</td>
-                      <td style={{ padding: '12px 14px' }}><button onClick={() => setExpenses(expenses.filter(i => i.id !== ex.id))} style={{ backgroundColor: '#7f1d1d', color: '#fca5a5', border: 'none', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer' }}>✕</button></td>
+                      <td style={{ padding: '12px 14px' }}><button onClick={() => handleExpensesUpdate(expenses.filter(i => i.id !== ex.id))} style={{ backgroundColor: '#7f1d1d', color: '#fca5a5', border: 'none', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer' }}>✕</button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -492,10 +542,18 @@ export default function App() {
               </div>
             </div>
           </div>
-        )}{activeTab === 'staff' && (
+        )}
+
+        {activeTab === 'staff' && (
           <div style={{ maxWidth: '650px', backgroundColor: '#0f172a', padding: '24px', borderRadius: '14px', border: '1px solid #1e293b' }}>
             <h3 style={{ marginTop: 0, fontSize: '16px', marginBottom: '16px' }}>Управление персоналом</h3>
-            <form onSubmit={e => { e.preventDefault(); if(!newStaffName || !newStaffPay) return; setStaff([...staff, { id: Date.now(), name: newStaffName, pay: parseFloat(newStaffPay) }]); setNewStaffName(''); setNewStaffPay(''); }} style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+            <form onSubmit={e => { 
+              e.preventDefault(); 
+              if(!newStaffName || !newStaffPay) return; 
+              const updatedStaff = [...staff, { id: Date.now(), name: newStaffName, pay: parseFloat(newStaffPay) }];
+              handleStaffUpdate(updatedStaff);
+              setNewStaffName(''); setNewStaffPay(''); 
+            }} style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
               <input type="text" placeholder="ФИО сотрудника" value={newStaffName} onChange={e => setNewStaffName(e.target.value)} style={{ flex: 2, padding: '10px 14px', backgroundColor: '#070b14', border: '1px solid #1e293b', color: '#fff', borderRadius: '8px' }} />
               <input type="number" placeholder="Оплата KGS" value={newStaffPay} onChange={e => setNewStaffPay(e.target.value)} style={{ flex: 1, padding: '10px 14px', backgroundColor: '#070b14', border: '1px solid #1e293b', color: '#fff', borderRadius: '8px' }} />
               <button type="submit" style={{ backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Добавить</button>
@@ -513,7 +571,7 @@ export default function App() {
                   <tr key={st.id} style={{ borderBottom: '1px solid #1e293b' }}>
                     <td style={{ padding: '12px 14px', fontWeight: '600' }}>{st.name}</td>
                     <td style={{ padding: '12px 14px' }}>{st.pay} KGS</td>
-                    <td style={{ padding: '12px 14px' }}><button onClick={() => setStaff(staff.filter(i => i.id !== st.id))} style={{ backgroundColor: '#7f1d1d', color: '#fca5a5', border: 'none', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer' }}>✕</button></td>
+                    <td style={{ padding: '12px 14px' }}><button onClick={() => handleStaffUpdate(staff.filter(i => i.id !== st.id))} style={{ backgroundColor: '#7f1d1d', color: '#fca5a5', border: 'none', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer' }}>✕</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -535,7 +593,8 @@ export default function App() {
                 text: newNoteText,
                 date: new Date().toLocaleDateString('ru-RU') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               };
-              setShiftNotes([newNote, ...shiftNotes]);
+              const updatedNotes = [newNote, ...shiftNotes];
+              handleNotesUpdate(updatedNotes);
               setNewNoteText('');
               setNewNoteAuthor('');
             }} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
@@ -552,7 +611,7 @@ export default function App() {
                     <span>{note.date}</span>
                   </div>
                   <div style={{ color: '#f8fafc', whiteSpace: 'pre-wrap', fontSize: '13px' }}>{note.text}</div>
-                  <button onClick={() => setShiftNotes(shiftNotes.filter(n => n.id !== note.id))} style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '12px' }}>Удалить</button>
+                  <button onClick={() => handleNotesUpdate(shiftNotes.filter(n => n.id !== note.id))} style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '12px' }}>Удалить</button>
                 </div>
               ))}
             </div>
@@ -567,7 +626,8 @@ export default function App() {
             <form onSubmit={e => {
               e.preventDefault();
               if (!camTitle) return;
-              setCameras([...cameras, { id: Date.now(), title: camTitle, url: camUrl }]);
+              const updatedCams = [...cameras, { id: Date.now(), title: camTitle, url: camUrl }];
+              handleCamerasUpdate(updatedCams);
               setCamTitle('');
               setCamUrl('');
             }} style={{ display: 'flex', gap: '10px', marginBottom: '24px', flexWrap: 'wrap' }}>
@@ -581,7 +641,7 @@ export default function App() {
                 <div key={cam.id} style={{ backgroundColor: '#070b14', border: '1px solid #1e293b', borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   <div style={{ padding: '12px 16px', backgroundColor: '#1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <strong style={{ fontSize: '13px', color: '#fff' }}>🔴 {cam.title}</strong>
-                    <button onClick={() => setCameras(cameras.filter(c => c.id !== cam.id))} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '12px' }}>Удалить</button>
+                    <button onClick={() => handleCamerasUpdate(cameras.filter(c => c.id !== cam.id))} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '12px' }}>Удалить</button>
                   </div>
                   <div style={{ height: '220px', backgroundColor: '#000', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
                     {cam.url ? (
@@ -611,7 +671,14 @@ export default function App() {
                 <label style={{ display: 'block', color: '#94a3b8', fontSize: '11px', marginBottom: '4px' }}>Новый ПИН Владельца (текущий: {ownerPin})</label>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <input type="password" maxLength="6" placeholder="Новый ПИН" value={newOwnerPinInput} onChange={e => setNewOwnerPinInput(e.target.value)} style={{ flex: 1, padding: '8px 12px', backgroundColor: '#0f172a', border: '1px solid #1e293b', color: '#fff', borderRadius: '6px' }} />
-                  <button onClick={() => { if(newOwnerPinInput) { setOwnerPin(newOwnerPinInput); setNewOwnerPinInput(''); alert('ПИН Владельца обновлен!'); } }} style={{ backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Сменить</button>
+                  <button onClick={() => { 
+                    if(newOwnerPinInput) { 
+                      setOwnerPin(newOwnerPinInput); 
+                      saveToSupabase('ownerPin', newOwnerPinInput);
+                      setNewOwnerPinInput(''); 
+                      alert('ПИН Владельца обновлен!'); 
+                    } 
+                  }} style={{ backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Сменить</button>
                 </div>
               </div>
 
@@ -619,7 +686,14 @@ export default function App() {
                 <label style={{ display: 'block', color: '#94a3b8', fontSize: '11px', marginBottom: '4px' }}>Новый ПИН Ресепшена (текущий: {staffPin})</label>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <input type="password" maxLength="6" placeholder="Новый ПИН" value={newStaffPinInput} onChange={e => setNewStaffPinInput(e.target.value)} style={{ flex: 1, padding: '8px 12px', backgroundColor: '#0f172a', border: '1px solid #1e293b', color: '#fff', borderRadius: '6px' }} />
-                  <button onClick={() => { if(newStaffPinInput) { setStaffPin(newStaffPinInput); setNewStaffPinInput(''); alert('ПИН Администратора обновлен!'); } }} style={{ backgroundColor: '#059669', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Сменить</button>
+                  <button onClick={() => { 
+                    if(newStaffPinInput) { 
+                      setStaffPin(newStaffPinInput); 
+                      saveToSupabase('staffPin', newStaffPinInput);
+                      setNewStaffPinInput(''); 
+                      alert('ПИН Администратора обновлен!'); 
+                    } 
+                  }} style={{ backgroundColor: '#059669', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Сменить</button>
                 </div>
               </div>
             </div>
@@ -627,6 +701,7 @@ export default function App() {
             <form onSubmit={e => {
               e.preventDefault();
               setHotelName(editHotelName);
+              saveToSupabase('hotelName', editHotelName);
               alert('Название сохранено!');
             }} style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
               <div>
@@ -640,7 +715,11 @@ export default function App() {
 
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', color: '#94a3b8', fontSize: '11px', marginBottom: '6px', fontWeight: '600' }}>Стартовая разменная касса (KGS)</label>
-              <input type="number" value={startShiftCash} onChange={e => setStartShiftCash(parseFloat(e.target.value) || 0)} style={{ width: '100%', padding: '10px 14px', backgroundColor: '#070b14', border: '1px solid #1e293b', color: '#fff', borderRadius: '8px' }} />
+              <input type="number" value={startShiftCash} onChange={e => {
+                const val = parseFloat(e.target.value) || 0;
+                setStartShiftCash(val);
+                saveToSupabase('startShiftCash', val);
+              }} style={{ width: '100%', padding: '10px 14px', backgroundColor: '#070b14', border: '1px solid #1e293b', color: '#fff', borderRadius: '8px' }} />
             </div>
 
             <hr style={{ borderColor: '#1e293b', margin: '20px 0' }} />
