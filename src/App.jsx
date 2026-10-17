@@ -83,7 +83,7 @@ export default function App() {
   const [extraCategory, setExtraCategory] = useState('Штраф');
   const [extraName, setExtraName] = useState('');
   const [extraPrice, setExtraPrice] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');// Загрузка данных из Supabase при старте приложения
+  const [searchQuery, setSearchQuery] = useState('');// Загрузка данных из Supabase при старте приложения + Realtime подписка
   useEffect(() => {
     async function fetchDataFromSupabase() {
       try {
@@ -113,7 +113,33 @@ export default function App() {
         console.error('Сбой подключения к Supabase:', err);
       }
     }
+
     fetchDataFromSupabase();
+
+    // Подписка Realtime для автообновления на телефоне и ноутбуке
+    const channel = supabase
+      .channel('public:hotel_data')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hotel_data' }, (payload) => {
+        const updatedRow = payload.new;
+        if (!updatedRow) return;
+
+        if (updatedRow.key === 'rooms' && updatedRow.value) setRooms(updatedRow.value);
+        if (updatedRow.key === 'expenses' && updatedRow.value) setExpenses(updatedRow.value);
+        if (updatedRow.key === 'staff' && updatedRow.value) setStaff(updatedRow.value);
+        if (updatedRow.key === 'shiftNotes' && updatedRow.value) setShiftNotes(updatedRow.value);
+        if (updatedRow.key === 'cameras' && updatedRow.value) setCameras(updatedRow.value);
+        if (updatedRow.key === 'hotelName' && updatedRow.value) {
+          setHotelName(updatedRow.value);
+          setEditHotelName(updatedRow.value);
+        }
+        if (updatedRow.key === 'startShiftCash' && updatedRow.value) setStartShiftCash(Number(updatedRow.value));
+        if (updatedRow.key === 'encashmentLog' && updatedRow.value) setEncashmentLog(updatedRow.value);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Универсальная функция для сохранения состояния в Supabase
@@ -339,7 +365,9 @@ export default function App() {
 
   const handleCloseShift = () => {
     alert(`Смена сдана! Наличность к передаче сменщику: ${currentCashInDrawer} KGS. Не забудьте проверить разменный баланс (${startShiftCash} KGS).`);
-  };if (!isAuthenticated) {
+  };
+
+  if (!isAuthenticated) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#070b14', color: '#fff', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <div style={{ backgroundColor: '#0f172a', padding: '36px', borderRadius: '16px', border: '1px solid #1e293b', width: '380px', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.6)' }}>
@@ -354,9 +382,7 @@ export default function App() {
         </div>
       </div>
     );
-  }
-
-  return (
+  }return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#070b14', color: '#f1f5f9', minHeight: '100vh', fontSize: '13px' }}>
       <header style={{ backgroundColor: '#0f172a', padding: '16px 28px', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -455,7 +481,9 @@ export default function App() {
               })}
             </div>
           </div>
-        )}{activeTab === 'finance' && (
+        )}
+
+        {activeTab === 'finance' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px' }}>
             <div style={{ backgroundColor: '#0f172a', padding: '24px', borderRadius: '14px', border: '1px solid #1e293b' }}>
               <h3 style={{ marginTop: 0, fontSize: '16px', marginBottom: '16px' }}>Учет мелких расходов / Закупок</h3>
@@ -577,9 +605,7 @@ export default function App() {
               </tbody>
             </table>
           </div>
-        )}
-
-        {activeTab === 'notes' && (
+        )}{activeTab === 'notes' && (
           <div style={{ maxWidth: '700px', backgroundColor: '#0f172a', padding: '24px', borderRadius: '14px', border: '1px solid #1e293b' }}>
             <h3 style={{ marginTop: 0, fontSize: '16px', marginBottom: '8px', color: '#38bdf8' }}>📝 Заметки и передача смены</h3>
             <p style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '20px' }}>Здесь администраторы могут оставлять важные сообщения для следующей смены.</p>
@@ -862,4 +888,4 @@ export default function App() {
       )}
     </div>
   );
-} 
+}
