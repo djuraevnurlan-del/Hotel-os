@@ -143,15 +143,17 @@ export default function App() {
   }, []);
 
   // Универсальная функция для сохранения состояния в Supabase
-  const saveToSupabase = async (key, value) => {
+  const
+   saveToSupabase = async (key, value) => {
     try {
-      await supabase
-        .from('hotel_data')
-        .upsert({ key, value }, { onConflict: 'key' });
+        let { error } = await supabase
+            .from('hotel_data')
+            .upsert({ key, value }); // Убираем { onConflict: 'key' }, пусть Supabase сам разбирается или использует дефолтный ключ таблицы
+        if (error) throw error;
     } catch (err) {
-      console.error('Ошибка сохранения в Supabase:', err);
+        console.error('Ошибка сохранения в Supabase:', err);
     }
-  };
+};
 
   const handleRoomsUpdate = (newRooms) => {
     setRooms(newRooms);
