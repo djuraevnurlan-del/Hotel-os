@@ -147,7 +147,7 @@ export default function App() {
     try {
       await supabase
         .from('hotel_data')
-        .insert({ key, value }, { onConflict: 'key' });
+        .upsert({ key, value }, { onConflict: 'key' });
     } catch (err) {
       console.error('Ошибка сохранения в Supabase:', err);
     }
